@@ -1,0 +1,59 @@
+name: Windows patched build
+
+# Builds only the Windows installer, without release secrets.
+# Runs on every push to the patch branch.
+on:
+  push:
+    branches:
+      - fix/loudnorm-between-tracks
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: 3.29.2
+  FLUTTER_CHANNEL: master
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2.18.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+          git-source: https://github.com/flutter/flutter.git
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Prepare .env contents
+        shell: pwsh
+        env:
+          RELEASE_DOTENV: ${{ secrets.DOTENV_RELEASE }}
+        run: |
+          if ($env:RELEASE_DOTENV) {
+            $content = $env:RELEASE_DOTENV
+          } else {
+            $content = "SPOTIFY_SECRETS=xxx:xxx`nENABLE_UPDATE_CHECK=0`nLASTFM_API_KEY=`nLASTFM_API_SECRET=`nHIDE_DONATIONS=0`nDISABLE_SPOTIFY_IMAGES=0"
+          }
+          "DOTENV<<EOF`n$content`nEOF" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+          dart cli/cli.dart install-dependencies --platform=windows
+
+      - name: Build Windows installer
+        run: dart cli/cli.dart build --arch=x86 windows
+        env:
+          CHANNEL: stable
+
+      - uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: Spotube-windows-patched
+          path: dist/Spotube-windows-x86_64-setup.exe
