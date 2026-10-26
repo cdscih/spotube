@@ -139,7 +139,11 @@ class CustomPlayer extends Player {
 
   Future<void> setAudioNormalization(bool normalize) async {
     if (normalize) {
-      await nativePlayer.setProperty('af', 'dynaudnorm=g=5:f=250:r=0.9:p=0.5');
+      // Loudness normalization to a fixed target (-14 LUFS, same as Spotify)
+      // so tracks come out at a similar level, instead of dynaudnorm, which
+      // rides gain on ~1s windows and pumps the volume inside a track.
+      // LRA=11 leaves music dynamics mostly untouched.
+      await nativePlayer.setProperty('af', 'loudnorm=I=-14:LRA=11:TP=-1.5');
     } else {
       await nativePlayer.setProperty('af', '');
     }
