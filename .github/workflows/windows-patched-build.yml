@@ -14,9 +14,16 @@ env:
 
 jobs:
   windows:
-    runs-on: windows-latest
+    # Pinned: Flutter 3.29.2 picks a "Visual Studio 16 2019" CMake generator on
+    # windows-latest and fails because no usable VS 2019 instance exists there.
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+
+      - name: Show installed Visual Studio instances
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -all -products * -format text
 
       - uses: subosito/flutter-action@v2.18.0
         with:
